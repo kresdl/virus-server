@@ -1,8 +1,8 @@
 'use strict';
 
 const http = require('./http'),
-  { Observable, fromEvent, Observable } = require('rxjs'),
-  { map, take, takeUntil } = require('rxjs/operators'),
+  { Observable, fromEvent } = require('rxjs'),
+  { map, take, takeUntil, tap } = require('rxjs/operators'),
   io = require('socket.io')(http),
 
   escape = char => ({
@@ -15,7 +15,7 @@ const http = require('./http'),
 
   sanitize = str => str && str.trim().replace(/[<>&'"]/g, escape),
 
-  players = new Set();
+  players = new Set(),
 
   player$ = new Observable(subscriber => {
     io.on('connection', socket => {
@@ -26,14 +26,19 @@ const http = require('./http'),
           return socket.emit('inuse');
 
         players.add(name);
+        socket.emit('joined', name);
 
         const leave$ = fromEvent(socket, 'disconnect')
           .pipe(
             take(1),
             tap(() => players.delete(name)),
           );
+
+        const leaveSub = leave$.subscribe();
   
         subscriber.next({ name, socket, leave$ });
+
+        return () => leaveSub.unsubscribe();
       });
     })
   }),
@@ -42,10 +47,11 @@ const http = require('./http'),
     fromEvent(player.socket, 'click')
       .pipe(
         map(({ x, y }) => ({
-          player, x, y,
-          time: Date.now()
+          player: player.name, 
+          time: Date.now(),
+          x, y,
         })),
         takeUntil(player.leave$)
-      )
+      );
   
 module.exports = { player$, fromClick }

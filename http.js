@@ -1,6 +1,6 @@
 'use strict';
 
-const static = require('./static'),
-  http = require('http').createServer(static);
+const expressApp = require('./static'),
+  http = require('http').createServer(expressApp);
 
 module.exports = http;
