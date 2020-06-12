@@ -1,21 +1,22 @@
 'use strict';
 
-const { env } = process,
-  SETS = +env.SETS,
-  VIRUS_SIZE = +env.VIRUS_SIZE,
-  BOARD_SIZE = +env.BOARD_SIZE,
-  GAME_DELAY = +env.GAME_DELAY,
-  SET_DELAY = +env.SET_DELAY,
-  MAX_VIRUS_DELAY = +env.MAX_VIRUS_DELAY,
+const { SETS, VIRUS_SIZE, SCOPE_RADIUS, 
+  GAME_DELAY, SET_DELAY, MAX_VIRUS_DELAY } = process.env,
 
   playerStream = require('./player-stream'),
 
   { of, merge, range } = require('rxjs'),
 
   { map, tap, toArray, concatMap, mergeMap,
-    delay, takeLast, takeWhile } = require('rxjs/operators'),
+    delay, skipWhile, take, timeoutWith } = require('rxjs/operators'),
 
-  random = max => Math.floor(max * Math.random());
+  scatter = r => {
+    const r2 = r * Math.sqrt(Math.random()),
+      theta = Math.random() * 2 * Math.PI,
+      x = r + r2 * Math.cos(theta),
+      y = r + r2 * Math.sin(theta);
+    return { x, y };
+  };
 
 module.exports = (p1, p2, sockets) => {
 
@@ -33,9 +34,8 @@ module.exports = (p1, p2, sockets) => {
             tap(() => toPlayers('start')),
             delay(MAX_VIRUS_DELAY * Math.random()),
             map(() => ({
-              x: random(BOARD_SIZE),
-              y: random(BOARD_SIZE),
-              variant: random(3),
+              ...scatter(+SCOPE_RADIUS),
+              variant: Math.floor(3 * Math.random()),
               time: Date.now()
             })),
             tap(({ x, y, variant }) => toPlayers('virus', { x, y, variant })),
@@ -44,21 +44,22 @@ module.exports = (p1, p2, sockets) => {
                 playerStream(p1, sockets),
                 playerStream(p2, sockets)
               ).pipe(
-                takeWhile(player => {
+                skipWhile(player => {
                   const d = Math.sqrt((virus.x - player.x) ** 2 
                   + (virus.y - player.y) ** 2);
-                  console.log(d > VIRUS_SIZE / 2);
                   return d > VIRUS_SIZE / 2;
                 }),
-                takeLast(1),
-                tap(() => console.log('pass')),
+                timeoutWith(
+                  2000, of(null)
+                ),
+                take(1),
                 map(p =>
                   p && {
                     player: p.player,
                     time: p.time - virus.time
                   }
                 ),
-                tap(results => toPlayers('results', results)),
+                tap(results => toPlayers(results ? 'results' : 'miss', results)),
                 delay(SET_DELAY)
               )
             )

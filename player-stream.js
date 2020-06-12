@@ -1,7 +1,7 @@
 'use strict';
 
 const { fromEvent } = require('rxjs'),
-  { map, tap } = require('rxjs/operators');
+  { map } = require('rxjs/operators');
 
 module.exports = (player, sockets) => 
   fromEvent(sockets[player], 'click')
