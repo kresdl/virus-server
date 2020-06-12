@@ -3,14 +3,10 @@
 require('dotenv').config();
 
 const port = +process.env.PORT || 3000,
-  express = require('express'),
-  socket = require('./socket'),
-  app = express(),
-  http = require('http').createServer(app);
+  http = require('./http'),
+  game$ = require('./game-stream');
 
-socket(http);
-
-app.use('/:nick', express.static('public'));
+game$.subscribe();
 
 http.listen(port, '0.0.0.0', () => {
   console.log('Listening on port ' + port);
