@@ -20,9 +20,10 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
 
 module.exports = (p1, p2, sockets) => {
 
-  const toPlayers = (type, data) => [p1, p2].forEach(p =>
-    sockets[p].emit(type, data)
-  );
+  const toPlayers = (type, data) => [p1, p2].forEach((p, i) => {
+    const socket = sockets[p];
+    socket && socket.emit(type, data)
+  });
 
   return of(0).pipe(
     tap(() => toPlayers('ready', [p1, p2])),
