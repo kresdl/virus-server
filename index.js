@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 
-const port = +process.process.PORT || 3000,
+const port = +process.env.PORT || 3000,
   express = require('express'),
   socket = require('./socket'),
   app = express(),

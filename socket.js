@@ -1,8 +1,10 @@
 'use strict';
 
-module.exports = http => {
+const gameStream = require('./game-stream'),
+  socketio = require('socket.io');
 
-  const io = require('socket.io')(http),
+module.exports = http => {
+  const io = socketio(http),
 
     escape = char => ({
       '<': '&lt;',
@@ -21,7 +23,7 @@ module.exports = http => {
       while (queue.length >= 2) {
         const players = queue.splice(0, 2);
 
-        gameStream(...players).subscribe(results => {
+        gameStream(...players, users).subscribe(results => {
           players.forEach(p => users[p].emit('end', results))
           queue.push(...players);
           roll();
