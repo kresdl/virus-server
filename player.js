@@ -18,30 +18,38 @@ const http = require('./http'),
   players = new Set(),
 
   player$ = new Observable(subscriber => {
-    io.on('connection', socket => {
-      socket.on('join', nick => {
-        const name = sanitize(nick);
+    let leaveSubscr;
 
-        if (players.has(name)) 
-          return socket.emit('inuse');
+    const onConnection = socket => {
+      socket.on('join', onJoin);
+    };
 
-        players.add(name);
-        socket.emit('joined', name);
+    const onJoin = nick => {
+      const name = sanitize(nick);
 
-        const leave$ = fromEvent(socket, 'disconnect')
-          .pipe(
-            take(1),
-            tap(() => players.delete(name)),
-          );
+      if (players.has(name)) 
+        return socket.emit('inuse');
 
-        const leaveSub = leave$.subscribe();
-  
-        subscriber.next({ name, socket, leave$ });
+      players.add(name);
+      socket.emit('joined', name);
 
-        return () => leaveSub.unsubscribe();
-      });
-    })
-  }),
+      const leave$ = fromEvent(socket, 'disconnect')
+        .pipe(
+          take(1),
+          tap(() => players.delete(name)),
+        );
+
+      leaveSubscr = leave$.subscribe();
+      subscriber.next({ name, socket, leave$ });
+    };
+
+    io.on('connection', onConnection);
+
+    return () => {          
+      leaveSubscr.unsubscribe();
+      io.removeListener('connect', onConnect);
+    };
+}),
 
   fromClick = player =>
     fromEvent(player.socket, 'click')
