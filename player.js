@@ -18,36 +18,35 @@ const http = require('./http'),
   players = new Set(),
 
   player$ = new Observable(subscriber => {
-    let leaveSubscr;
+    let leaveSubscr, sockets =[];
+  
+    io.addEventListener('connection', socket => {
+      sockets.push(socket);
 
-    const onConnection = socket => {
-      socket.on('join', onJoin);
-    };
-
-    const onJoin = nick => {
-      const name = sanitize(nick);
-
-      if (players.has(name)) 
-        return socket.emit('inuse');
-
-      players.add(name);
-      socket.emit('joined', name);
-
-      const leave$ = fromEvent(socket, 'disconnect')
-        .pipe(
-          take(1),
-          tap(() => players.delete(name)),
-        );
-
-      leaveSubscr = leave$.subscribe();
-      subscriber.next({ name, socket, leave$ });
-    };
-
-    io.on('connection', onConnection);
+      socket.on('join', nick => {
+        const name = sanitize(nick);
+  
+        if (players.has(name)) 
+          return socket.emit('inuse');
+  
+        players.add(name);
+        socket.emit('joined', name);
+  
+        const leave$ = fromEvent(socket, 'disconnect')
+          .pipe(
+            take(1),
+            tap(() => players.delete(name)),
+          );
+  
+        leaveSubscr = leave$.subscribe();
+        subscriber.next({ name, socket, leave$ });
+      });
+    });
 
     return () => {          
       leaveSubscr.unsubscribe();
-      io.removeListener('connect', onConnect);
+      io.removeAllListeners('connection');
+      sockets.forEach(socket => socket.removeAllListeners('join'));
     };
 }),
 

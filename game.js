@@ -25,8 +25,9 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
   game = player$ =>
     player$.pipe(
       bufferCount(2),
-      tap(players => toPlayers(players, 'ready',
-        players.map(p => p.name))),
+      tap(players => players.forEach(({ name, socket }) =>
+        socket.connected && socket.emit('ready', players
+          .find(p => p.name !== name).name))),
       delay(GAME_DELAY),
       mergeMap(players =>
         range(0, SETS).pipe(
