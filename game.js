@@ -1,13 +1,13 @@
 'use strict';
 
 const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
-  GAME_DELAY, SET_DELAY, MAX_VIRUS_DELAY } = process.env,
+  GAME_DELAY, SET_DELAY, MAX_VIRUS_DELAY, RESTART_DELAY } = process.env,
 
   { fromClick } = require('./player'),
 
-  { of, merge, range } = require('rxjs'),
+  { of, merge, range, from } = require('rxjs'),
 
-  { map, tap, toArray, concatMap, mergeMap,
+  { map, tap, toArray, concatMap, mergeMap, 
     delay, skipWhile, take, timeoutWith, bufferCount } = require('rxjs/operators'),
 
   scatter = r => {
@@ -24,6 +24,7 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
 
   game = player$ =>
     player$.pipe(
+      tap(player => player.socket.emit('wait')),
       bufferCount(2),
       tap(players => players.forEach(({ name, socket }) =>
         socket.connected && socket.emit('ready', players
@@ -63,16 +64,20 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
                     }
                   ),
                   tap(results => toPlayers(players,
-                    results ? 'results' : 'miss', results)),
+                    results ? 'partial' : 'miss', results)),
                   delay(SET_DELAY)
                 )
               )
             )
           ),
           toArray(),
-          tap(results => toPlayers(players, 'end', results))
+          tap(results => toPlayers(players, 'results', results)),
+          mergeMap(() =>
+            from(players.filter(p => p.socket.connected))
+          ),
+          delay(RESTART_DELAY)
         )
-      ),
+      )
     );
 
 module.exports = game;
