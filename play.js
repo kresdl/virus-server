@@ -3,11 +3,9 @@
 const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
   GAME_DELAY, SET_DELAY, MAX_VIRUS_DELAY, RESTART_DELAY } = process.env,
 
-  { fromClick } = require('./player'),
+  { fromEvent, of, merge, range, from } = require('rxjs'),
 
-  { of, merge, range, from } = require('rxjs'),
-
-  { map, tap, toArray, concatMap, mergeMap, 
+  { map, tap, toArray, concatMap, mergeMap, takeUntil,
     delay, skipWhile, take, timeoutWith, bufferCount } = require('rxjs/operators'),
 
   scatter = r => {
@@ -19,16 +17,28 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
   },
 
   toPlayers = (players, type, data) => players.forEach(({ socket }) => {
-    socket.connected && socket.emit(type, data)
+    socket.connected && socket.emit(type, data);
   }),
 
-  game = player$ =>
+  fromClick = player =>
+    fromEvent(player.socket, 'click')
+      .pipe(
+        map(({ x, y }) => ({
+          player: player.name,
+          time: Date.now(),
+          x, y,
+        })),
+        takeUntil(player.leave$)
+      ),
+
+  play = player$ =>
     player$.pipe(
       tap(player => player.socket.emit('wait')),
       bufferCount(2),
       tap(players => players.forEach(({ name, socket }) =>
-        socket.connected && socket.emit('ready', players
-          .find(p => p.name !== name).name))),
+        socket.connected && socket.emit('ready', players.find(p =>
+          p.name !== name).name))
+      ),
       delay(GAME_DELAY),
       mergeMap(players =>
         range(0, SETS).pipe(
@@ -42,7 +52,8 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
                 time: Date.now()
               })),
               tap(({ x, y, variant }) => toPlayers(players,
-                'virus', { x, y, variant })),
+                'virus', { x, y, variant })
+              ),
               mergeMap(virus =>
                 merge(
                   fromClick(players[0]),
@@ -64,7 +75,8 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
                     }
                   ),
                   tap(results => toPlayers(players,
-                    results ? 'partial' : 'miss', results)),
+                    results ? 'partial' : 'miss', results)
+                  ),
                   delay(SET_DELAY)
                 )
               )
@@ -80,4 +92,4 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
       )
     );
 
-module.exports = game;
+module.exports = play;

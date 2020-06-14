@@ -2,7 +2,7 @@
 
 const http = require('./http'),
   { Subject, fromEvent } = require('rxjs'),
-  { map, take, takeUntil, tap } = require('rxjs/operators'),
+  { take, tap } = require('rxjs/operators'),
   io = require('socket.io')(http),
 
   escape = char => ({
@@ -16,18 +16,7 @@ const http = require('./http'),
   sanitize = str => str && str.trim().replace(/[<>&'"]/g, escape),
 
   players = new Set(),
-  player$ = new Subject(),
-
-  fromClick = player =>
-    fromEvent(player.socket, 'click')
-      .pipe(
-        map(({ x, y }) => ({
-          player: player.name,
-          time: Date.now(),
-          x, y,
-        })),
-        takeUntil(player.leave$)
-      );
+  player$ = new Subject();
 
 io.on('connection', socket => {
   socket.on('join', nick => {
@@ -45,8 +34,10 @@ io.on('connection', socket => {
         tap(() => players.delete(name)),
       );
 
+    leave$.subscribe();
+
     player$.next({ name, socket, leave$ });
   });
 });
 
-module.exports = { player$, fromClick }
+module.exports = player$;
