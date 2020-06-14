@@ -8,6 +8,8 @@ const debug = require('debug')('virus-server'),
   player$ = require('./player-stream'),
   play = require('./play');
 
+
+// Pipe players to game and recycle
 player$.pipe(play).subscribe(player =>
   player$.next(player)
 );
