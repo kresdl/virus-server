@@ -22,26 +22,7 @@ const { SETS, VIRUS_SIZE, SCOPE_RADIUS,
     socket.connected && socket.emit(type, data);
   }),
 
-  // Creates a stream of mouse clicks for specific player
-  click = player =>
-    fromEvent(player.socket, 'click')
-      .pipe(
-        map(({ x, y }) => ({
-          player: player.name,
-          time: Date.now(),
-          x, y,
-        })),
-        takeUntil(player.leave$)
-      ),
-
   // Creates a stream of play again-requests for specific player
-  playAgain = player =>
-    fromEvent(player.socket, 'play-again')
-      .pipe(
-        mapTo(player),
-        takeUntil(player.leave$),
-        take(1)
-      ),
 
   // Game stream
   play = player$ =>
