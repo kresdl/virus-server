@@ -1,33 +1,22 @@
-'use strict';
+const { Subject, fromEvent, of, range, from } = require('rxjs'),
 
-const { Subject, fromEvent, of, range, from, interval, merge } = require('rxjs'),
+  { map, toArray, concatMap, mergeMap, mergeAll, mapTo, bufferCount,
+    delay, skipWhile, take, timeoutWith, tap } = require('rxjs/operators'),
 
-  { map, toArray, concatMap, mergeMap, takeUntil, mergeAll,
-    delay, skipWhile, take, timeoutWith, bufferCount, mapTo,
-    tap, defaultIfEmpty, withLatestFrom, expand } = require('rxjs/operators'),
+  { click } = require('./input'),
 
-  SETS = 10,
+  SETS = 2,
   VIRUS_SIZE = 100,
   SCOPE_RADIUS = 300,
   SET_DELAY = 1000,
   VIRUS_TIME = 2000,
   MAX_VIRUS_INTERVAL = 4000,
+  GAME_DELAY = 2000,
 
   http = require('./http'),
   io = require('socket.io')(http),
-  debug = require('debug')('virus-server:main'),
 
-  // Escape unsafe characters
-  escape = char => ({
-    '<': '&lt;',
-    '>': '&gt;',
-    '&': '&amp;',
-    "'": '&apos;',
-    '"': '&quot;'
-  })[char],
-
-  sanitize = str => str && str.trim().replace(/[<>&'"]/g, escape),
-
+  // Generates a random point on a disc
   scatter = r => {
     const r2 = r * Math.sqrt(Math.random()),
       theta = Math.random() * 2 * Math.PI,
@@ -39,10 +28,9 @@ const { Subject, fromEvent, of, range, from, interval, merge } = require('rxjs')
   // Emit to player pair
   toPlayers = (players, type, data) => players.forEach(({ socket }) => {
     socket.connected && socket.emit(type, data);
-  }),
+  });
 
-  players = new Set();
-
+// Join stream (unvalidated nick)
 const join$ = fromEvent(io, 'connection').pipe(
   mergeMap(socket =>
     fromEvent(socket, 'join').pipe(
@@ -51,42 +39,29 @@ const join$ = fromEvent(io, 'connection').pipe(
   )
 );
 
+// Player stream (validated nick)
 const player$ = new Subject();
 
-join$.subscribe(({ nick, socket }) => {
-  const name = sanitize(nick);
-
-  if (players.has(name))
-    return socket.emit('inuse');
-
-  players.add(name);
-  socket.emit('joined', name);
-
-  player$.next({ name, socket });
-});
-
-player$.subscribe(({ socket }) => {
-  socket.emit('wait')
-});
-
-const pair$ = player$.pipe(
-  bufferCount(2)
+const leave$ = join$.pipe(
+  mergeMap(player =>
+    fromEvent(player.socket, 'disconnect').pipe(
+      mapTo(player.name)
+    )
+  )
 );
 
-pair$.subscribe(players =>
-  players.forEach(({ name, socket }) =>
+// Game stream
+const game$ = player$.pipe(
+  // Pair players
+  bufferCount(2),
+  // Notify players of contender
+  tap(players => players.forEach(({ name, socket }) =>
     socket.connected && socket.emit('ready', players.find(p =>
-      p.name !== name).name)));
-
-const game$ = pair$.pipe(
-  delay(SET_DELAY)
-);
-
-game$.subscribe(players => {
-  toPlayers(players, 'start');
+      p.name !== name).name))
+  ),
+  delay(GAME_DELAY),
 
   mergeMap(players =>
-
     // Run n sets
     range(0, SETS).pipe(
       concatMap(() =>
@@ -117,7 +92,7 @@ game$.subscribe(players => {
                 return d > VIRUS_SIZE / 2;
               }),
               timeoutWith(
-                2000, of(null)
+                VIRUS_TIME, of(null)
               ),
               take(1),
               map(p =>
@@ -139,28 +114,11 @@ game$.subscribe(players => {
       toArray(),
 
       // Notify of game results
-      tap(results => toPlayers(players, 'results', results)),
-
-      // Respond to play again-requests by emitting them 
-      // for subscriber to feed them back in again
-      mergeMap(() =>
-        from(players).pipe(
-          map(playAgain),
-          mergeAll()
-        )
-      )
-    )
-  )
-});
-
-const disconnect$ = join$.pipe(
-  mergeMap(player =>
-    fromEvent(player.socket, 'disconnect').pipe(
-      mapTo(player.name)
+      tap(results => toPlayers(players, 'results', results))
     )
   )
 );
 
-disconnect$.subscribe(name => {
-  delete players[name];
-});
+module.exports = {
+  game$, join$, player$, game$, leave$
+};
