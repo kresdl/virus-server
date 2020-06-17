@@ -15,5 +15,8 @@
     "express": "^4.17.1",
     "rxjs": "^6.5.5",
     "socket.io": "^2.3.0"
+  },
+  "engines": {
+    "node": "12.x"
   }
 }
