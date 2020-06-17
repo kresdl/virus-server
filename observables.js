@@ -2,10 +2,9 @@
 
 const { Subject, fromEvent, of, range, from } = require('rxjs'),
   { map, toArray, concatMap, mergeMap, mergeAll, bufferCount,
-    takeUntil, delay, skipWhile, take, timeoutWith, tap } = require('rxjs/operators'),
+    takeUntil, delay, take, timeoutWith, tap } = require('rxjs/operators'),
 
   SETS = 2,
-  VIRUS_SIZE = 100,
   SCOPE_RADIUS = 300,
   SET_DELAY = 1000,
   VIRUS_TIME = 2000,
@@ -29,14 +28,13 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
     socket.connected && socket.emit(type, data);
   }),
 
-  // Creates a stream of mouse clicks for specific player
-  click = ({ name, socket }) =>
+  // Creates a stream of hit for specific player
+  hit = ({ name, socket }) =>
     fromEvent(socket, 'click')
       .pipe(
-        map(({ x, y }) => ({
+        map(time => ({
           player: name,
-          time: Date.now(),
-          x, y,
+          time
         })),
         takeUntil(
           fromEvent(socket, 'disconnect')
@@ -65,48 +63,32 @@ const game$ = player$.pipe(
       p.name !== name).name))
   ),
   delay(GAME_DELAY),
-
   mergeMap(players =>
     // Run n sets
     range(0, SETS).pipe(
       concatMap(() =>
         of(0).pipe(
-
           // Start
           tap(() => toPlayers(players, 'start')),
           delay(MAX_VIRUS_INTERVAL * Math.random()),
           map(() => ({
             ...scatter(SCOPE_RADIUS),
-            variant: Math.floor(3 * Math.random()),
-            time: Date.now()
+            variant: Math.floor(3 * Math.random())
           })),
 
           // Emit virus
           tap(({ x, y, variant }) => toPlayers(players,
             'virus', { x, y, variant })
           ),
-          mergeMap(virus =>
-
-            // Respond to clicks
+          mergeMap(() =>
+            // Respond to hits
             from(players).pipe(
-              map(click),
+              map(hit),
               mergeAll(),
-              skipWhile(player => {
-                const d = Math.sqrt((virus.x - player.x) ** 2
-                  + (virus.y - player.y) ** 2);
-                return d > VIRUS_SIZE / 2;
-              }),
               timeoutWith(
                 VIRUS_TIME, of(null)
               ),
               take(1),
-              map(p =>
-                p && {
-                  player: p.player,
-                  time: p.time - virus.time
-                }
-              ),
-
               // Notify of set result
               tap(results => toPlayers(players,
                 results ? 'partial' : 'miss', results)
@@ -117,7 +99,6 @@ const game$ = player$.pipe(
         )
       ),
       toArray(),
-
       // Notify of game results
       tap(results => toPlayers(players, 'results', results))
     )

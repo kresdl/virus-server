@@ -27,7 +27,7 @@ const playAgain = socket =>
     );
 
 // Creates a disconnect stream
-const leave = ({ name, socket }) =>
+const leave = (name, socket) =>
   fromEvent(socket, 'disconnect')
     .pipe(
       mapTo(name)
@@ -35,6 +35,7 @@ const leave = ({ name, socket }) =>
 
 // On login
 const join = ({ nick, socket }) => {
+  console.log(' ');
   const name = sanitize(nick);
 
   if (players.has(name))
@@ -43,16 +44,22 @@ const join = ({ nick, socket }) => {
   players.add(name);
   socket.emit('joined', name);
 
+  [...players.keys()].forEach(console.log);
+
   const player = { name, socket },
     playAgain$ = playAgain(socket),
-    leave$ = leave(player);
+    leave$ = leave(name, socket);
 
   // Respond to play again-requests by feeding player
   // back into stream
   playAgain$.subscribe(() => player$.next(player));
 
   // Respond to disconnects
-  leave$.subscribe(() => players.delete(name));
+  leave$.subscribe(() => { 
+    players.delete(name);
+
+    [...players.keys()].forEach(console.log);
+  });
 
   // Initial player feed
   player$.next(player);
