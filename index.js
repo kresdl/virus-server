@@ -3,7 +3,7 @@
 require('dotenv').config();
 
 const debug = require('debug')('virus-server'),
-  port = +process.env.PORT || 3000,
+  port = process.env.PORT || 3000,
   http = require('./http'),
   { join$, player$, game$, leave$ } = require('./observables'),
   { join, leave, player } = require('./observers');
@@ -13,6 +13,6 @@ player$.subscribe(player);
 leave$.subscribe(leave);
 game$.subscribe();
 
-http.listen(port, 'localhost', () => {
+http.listen(port, '0.0.0.0', () => {
   debug('Listening on port ' + port);
 });
