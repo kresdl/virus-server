@@ -1,9 +1,9 @@
 const { Subject, fromEvent, of, range, from } = require('rxjs'),
 
-  { map, toArray, concatMap, mergeMap, mergeAll, mapTo, bufferCount,
+  { map, toArray, concatMap, mergeMap, mergeAll, bufferCount,
     delay, skipWhile, take, timeoutWith, tap } = require('rxjs/operators'),
 
-  { click } = require('./input'),
+  { click } = require('./player'),
 
   SETS = 2,
   VIRUS_SIZE = 100,
@@ -41,14 +41,6 @@ const join$ = fromEvent(io, 'connection').pipe(
 
 // Player stream (validated nick)
 const player$ = new Subject();
-
-const leave$ = join$.pipe(
-  mergeMap(player =>
-    fromEvent(player.socket, 'disconnect').pipe(
-      mapTo(player.name)
-    )
-  )
-);
 
 // Game stream
 const game$ = player$.pipe(
@@ -120,5 +112,5 @@ const game$ = player$.pipe(
 );
 
 module.exports = {
-  game$, join$, player$, game$, leave$
+  game$, join$, player$
 };

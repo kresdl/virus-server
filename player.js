@@ -1,6 +1,6 @@
 const { fromEvent } = require('rxjs'),
-  { map, takeUntil } = require('rxjs/operators');
-  
+  { map, takeUntil, mapTo } = require('rxjs/operators');
+
 // Creates a stream of mouse clicks for specific player
 const click = ({ name, socket }) =>
   fromEvent(socket, 'click')
@@ -24,5 +24,12 @@ const playAgain = socket =>
       )
     );
 
-module.exports = { click, playAgain };
+// Creates a disconnect stream
+const leave = ({ name, socket }) =>
+  fromEvent(socket, 'disconnect')
+    .pipe(
+      mapTo(name)
+    );
+
+module.exports = { click, playAgain, leave };
 

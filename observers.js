@@ -1,4 +1,4 @@
-const { playAgain } = require('./input'),
+const { playAgain, leave } = require('./player'),
   { player$ } = require('./observables');
 
   // Escape unsafe characters
@@ -24,12 +24,16 @@ const join = ({ nick, socket }) => {
   players.add(name);
   socket.emit('joined', name);
 
-  const playAgain$ = playAgain(socket),
-    player = { name, socket };
+  const player = { name, socket },
+    playAgain$ = playAgain(socket),
+    leave$ = leave(player);
 
   // Respond to play again-requests by feeding player
   // back into stream
   playAgain$.subscribe(() => player$.next(player));
+
+  // Respond to disconnects
+  leave$.subscribe(() => players.delete(name));
 
   // Initial player feed
   player$.next(player);
@@ -40,9 +44,4 @@ const player = ({ socket }) => {
   socket.emit('wait')
 };
 
-// On disconnect
-const leave = name => {
-  delete players[name];
-};
-
-module.exports = { join, player, leave };
+module.exports = { join, player };
