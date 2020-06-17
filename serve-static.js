@@ -3,6 +3,6 @@
 const express = require('express'),
   app = express();
 
-app.use('/:nick', express.static('public'));
+app.use('/', express.static('public'));
 
 module.exports = app;
