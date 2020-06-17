@@ -1,18 +1,37 @@
-const { playAgain, leave } = require('./player'),
+'use strict';
+
+const { fromEvent} = require('rxjs'),
+  { takeUntil, mapTo } = require('rxjs/operators'),
   { player$ } = require('./observables');
 
   // Escape unsafe characters
-  escape = char => ({
+const escape = char => ({
     '<': '&lt;',
     '>': '&gt;',
     '&': '&amp;',
     "'": '&apos;',
     '"': '&quot;'
-  })[char],
+  })[char];
 
-  sanitize = str => str && str.trim().replace(/[<>&'"]/g, escape),
+const sanitize = str => str && str.trim().replace(/[<>&'"]/g, escape);
 
-  players = new Set();
+const players = new Set();
+
+// Creates a stream of play again-requests for specific player
+const playAgain = socket =>
+  fromEvent(socket, 'play-again')
+    .pipe(
+      takeUntil(
+        fromEvent(socket, 'disconnect')
+      )
+    );
+
+// Creates a disconnect stream
+const leave = ({ name, socket }) =>
+  fromEvent(socket, 'disconnect')
+    .pipe(
+      mapTo(name)
+    );
 
 // On login
 const join = ({ nick, socket }) => {

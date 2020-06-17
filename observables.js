@@ -1,9 +1,8 @@
+'use strict';
+
 const { Subject, fromEvent, of, range, from } = require('rxjs'),
-
   { map, toArray, concatMap, mergeMap, mergeAll, bufferCount,
-    delay, skipWhile, take, timeoutWith, tap } = require('rxjs/operators'),
-
-  { click } = require('./player'),
+    takeUntil, delay, skipWhile, take, timeoutWith, tap } = require('rxjs/operators'),
 
   SETS = 2,
   VIRUS_SIZE = 100,
@@ -28,7 +27,21 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
   // Emit to player pair
   toPlayers = (players, type, data) => players.forEach(({ socket }) => {
     socket.connected && socket.emit(type, data);
-  });
+  }),
+
+  // Creates a stream of mouse clicks for specific player
+  click = ({ name, socket }) =>
+    fromEvent(socket, 'click')
+      .pipe(
+        map(({ x, y }) => ({
+          player: name,
+          time: Date.now(),
+          x, y,
+        })),
+        takeUntil(
+          fromEvent(socket, 'disconnect')
+        )
+      );
 
 // Join stream (unvalidated nick)
 const join$ = fromEvent(io, 'connection').pipe(
