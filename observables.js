@@ -1,7 +1,7 @@
 'use strict';
 
 const { Subject, fromEvent, of, range, from } = require('rxjs'),
-  { map, toArray, concatMap, mergeMap, mergeAll, bufferCount,
+  { map, toArray, concatMap, mergeMap, mergeAll,
     takeUntil, delay, take, timeoutWith, tap } = require('rxjs/operators'),
 
   SETS = 5,
@@ -30,33 +30,30 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
 
   // Creates a stream of hits for specific player
   hit = ({ name, socket }) =>
-    fromEvent(socket, 'click')
-      .pipe(
-        map(time => ({
-          player: name,
-          time
-        })),
-        takeUntil(
-          fromEvent(socket, 'disconnect')
-        )
-      );
+    fromEvent(socket, 'click').pipe(
+      map(time => ({ player: name, time })),
+      takeUntil(
+        fromEvent(socket, 'disconnect')
+      )
+    );
 
 // Login stream
 const join$ = fromEvent(io, 'connection').pipe(
   mergeMap(socket =>
     fromEvent(socket, 'join').pipe(
-      map(nick => ({ nick, socket }))
+      map(nick => ({ nick, socket })),
+      takeUntil(
+        fromEvent(socket, 'disconnect')
+      )
     )
   )
 );
 
-// Player stream
-const player$ = new Subject();
+// Player pair stream
+const players$ = new Subject();
 
 // Game stream
-const game$ = player$.pipe(
-  // Pair players
-  bufferCount(2),
+const game$ = players$.pipe(
   // Notify players of contender
   tap(players => players.forEach(({ name, socket }) =>
     socket.connected && socket.emit('ready', players.find(p =>
@@ -106,5 +103,5 @@ const game$ = player$.pipe(
 );
 
 module.exports = {
-  game$, join$, player$
+  game$, join$, players$
 };
