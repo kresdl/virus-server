@@ -41,7 +41,7 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
         )
       );
 
-// Loginß stream (unvalidated nick)
+// Login stream
 const join$ = fromEvent(io, 'connection').pipe(
   mergeMap(socket =>
     fromEvent(socket, 'join').pipe(
@@ -50,7 +50,7 @@ const join$ = fromEvent(io, 'connection').pipe(
   )
 );
 
-// Player stream (validated nick)
+// Player stream
 const player$ = new Subject();
 
 // Game stream
