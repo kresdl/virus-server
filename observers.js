@@ -35,7 +35,6 @@ const leave = (name, socket) =>
 
 // On login
 const join = ({ nick, socket }) => {
-  console.log(' ');
   const name = sanitize(nick);
 
   if (players.has(name))
@@ -43,8 +42,6 @@ const join = ({ nick, socket }) => {
 
   players.add(name);
   socket.emit('joined', name);
-
-  [...players.keys()].forEach(console.log);
 
   const player = { name, socket },
     playAgain$ = playAgain(socket),
@@ -57,8 +54,6 @@ const join = ({ nick, socket }) => {
   // Respond to disconnects
   leave$.subscribe(() => { 
     players.delete(name);
-
-    [...players.keys()].forEach(console.log);
   });
 
   // Initial player feed

@@ -28,7 +28,7 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
     socket.connected && socket.emit(type, data);
   }),
 
-  // Creates a stream of hit for specific player
+  // Creates a stream of hits for specific player
   hit = ({ name, socket }) =>
     fromEvent(socket, 'click')
       .pipe(
@@ -41,7 +41,7 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
         )
       );
 
-// Join stream (unvalidated nick)
+// Loginß stream (unvalidated nick)
 const join$ = fromEvent(io, 'connection').pipe(
   mergeMap(socket =>
     fromEvent(socket, 'join').pipe(
