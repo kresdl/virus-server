@@ -30,7 +30,7 @@ const { Subject, fromEvent, of, range, from } = require('rxjs'),
 
   // Creates a stream of hits for specific player
   hit = ({ name, socket }) =>
-    fromEvent(socket, 'click').pipe(
+    fromEvent(socket, 'hit').pipe(
       map(time => ({ player: name, time })),
       takeUntil(
         fromEvent(socket, 'disconnect')

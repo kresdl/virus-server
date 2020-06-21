@@ -41,7 +41,7 @@ const join = ({ nick, socket }) => {
     return socket.emit('inuse');
 
   pool.add(name);
-  socket.emit('joined', name);
+  socket.emit('join', name);
 
   const player = { name, socket };
 
@@ -68,4 +68,4 @@ const join = ({ nick, socket }) => {
   play(player);
 };
 
-  module.exports = { join };
+module.exports = { join };
